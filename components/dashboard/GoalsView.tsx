@@ -37,9 +37,9 @@ export function GoalsView({ goals, onAddGoal, onUpdateGoal, onDeleteGoal }: Goal
                   <div className="flex justify-between items-center mb-2">
                     <div>
                       <div className="font-medium">{goal.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Target date: {new Date(goal.targetDate).toLocaleDateString()}
-                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Target Date: {goal.deadline ? new Date(goal.deadline).toLocaleDateString() : 'No date set'}
+                      </p>
                     </div>
                     <div className="text-sm">
                       ${goal.currentAmount.toFixed(2)} / ${goal.targetAmount.toFixed(2)}

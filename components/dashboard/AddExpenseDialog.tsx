@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,18 +11,44 @@ import { Wallet } from '@/types/wallet';
 
 interface AddExpenseDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (expense: Omit<Expense, 'id'>) => void;
-  editExpense?: Expense;
-  wallets?: Wallet[];
+  onOpenChangeAction: (open: boolean) => void; // Renamed from onOpenChange
+  onAdd: (expense: Partial<Expense>) => void;
+  editExpense?: Expense | null;
+  wallets: Wallet[];
 }
 
-export function AddExpenseDialog({ open, onOpenChange, onAdd, editExpense, wallets }: AddExpenseDialogProps) {
-  const [description, setDescription] = useState(editExpense?.description || '');
-  const [amount, setAmount] = useState(editExpense?.amount.toString() || '');
-  const [category, setCategory] = useState(editExpense?.category || 'Food & Dining');
-  const [date, setDate] = useState(editExpense?.date || new Date().toISOString().split('T')[0]);
-  const [walletId, setWalletId] = useState(editExpense?.walletId || '');
+export function AddExpenseDialog({
+  open,
+  onOpenChangeAction, // Renamed from onOpenChange
+  onAdd,
+  editExpense,
+  wallets,
+}: AddExpenseDialogProps) {
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [walletId, setWalletId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (open) {
+      if (editExpense) {
+        setDescription(editExpense.description);
+        setAmount(editExpense.amount.toString());
+        setCategory(editExpense.category);
+        setDate(editExpense.date);
+        setWalletId(editExpense.walletId);
+      } else {
+        // Reset form for new expense
+        setDescription('');
+        setAmount('');
+        setCategory(EXPENSE_CATEGORIES[0]);
+        setDate(new Date().toISOString().split('T')[0]);
+        setWalletId(undefined);
+      }
+    }
+  }, [editExpense, open]);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,28 +59,18 @@ export function AddExpenseDialog({ open, onOpenChange, onAdd, editExpense, walle
       category,
       date,
       walletId: walletId || undefined,
-      // Add missing required properties from Expense type
       person: 'Self',
       tags: [],
       isRecurring: false,
       ...(editExpense ? { id: editExpense.id } : {})
     };
     
-    // Remove the 'as any' type assertion
-    onAdd(expenseData);
-    
-    // Reset form if not editing
-    if (!editExpense) {
-      setDescription('');
-      setAmount('');
-      setCategory('Food & Dining');
-      setDate(new Date().toISOString().split('T')[0]);
-      setWalletId('');
-    }
+    onAdd(expenseData as any);
+    onOpenChangeAction(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChangeAction}> {/* Use the new prop name here */}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{editExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
@@ -104,7 +120,6 @@ export function AddExpenseDialog({ open, onOpenChange, onAdd, editExpense, walle
                   <SelectValue placeholder="Select a wallet" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
                   {wallets.map((wallet) => (
                     <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>
                   ))}

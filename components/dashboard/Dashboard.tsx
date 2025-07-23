@@ -67,9 +67,9 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           <BudgetsView
             budgets={budgets}
             expenses={expenses}
-            onAdd={addBudget}
-            onUpdate={updateBudget}
-            onDelete={deleteBudget}
+            onAddBudget={addBudget}
+            onUpdateBudget={updateBudget}
+            onDeleteBudget={deleteBudget}
           />
         );
       case 'goals':

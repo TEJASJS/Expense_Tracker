@@ -12,33 +12,7 @@ export function useBudgets() {
     if (savedBudgets) {
       setBudgets(JSON.parse(savedBudgets));
     } else {
-      // Add some demo budgets
-      const demoBudgets: Budget[] = [
-        {
-          id: '1',
-          userId: 'demo',
-          category: 'Food & Dining',
-          monthlyLimit: 500,
-          currentSpent: 0,
-          alertThreshold: 80,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          userId: 'demo',
-          category: 'Transportation',
-          monthlyLimit: 200,
-          currentSpent: 0,
-          alertThreshold: 80,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      setBudgets(demoBudgets);
-      localStorage.setItem('budgets', JSON.stringify(demoBudgets));
+      setBudgets([]); // Initialize with an empty array if no saved budgets
     }
   }, []);
 
@@ -49,7 +23,7 @@ export function useBudgets() {
 
   const addBudget = (budgetData: Partial<Budget>) => {
     const newBudget: Budget = {
-      id: Date.now().toString(),
+      id: Date.now().toString(), // Consider using uuidv4() for consistency if available
       userId: 'current-user',
       category: budgetData.category || '',
       monthlyLimit: budgetData.monthlyLimit || 0,
@@ -113,6 +87,6 @@ export function useBudgets() {
     addBudget,
     updateBudget,
     deleteBudget,
-    checkBudgetLimits
+    checkBudgetLimits,
   };
 }

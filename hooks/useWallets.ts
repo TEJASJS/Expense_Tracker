@@ -2,88 +2,44 @@
 
 import { useState, useEffect } from 'react';
 import { Wallet } from '@/types/wallet';
+import { v4 as uuidv4 } from 'uuid';
 
 export function useWallets() {
-  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [wallets, setWallets] = useState<Wallet[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedWallets = localStorage.getItem('wallets');
+      return savedWallets ? JSON.parse(savedWallets) : [];
+    }
+    return [];
+  });
 
   useEffect(() => {
-    const savedWallets = localStorage.getItem('wallets');
-    if (savedWallets) {
-      setWallets(JSON.parse(savedWallets));
-    } else {
-      // Add some demo wallets
-      const demoWallets: Wallet[] = [
-        {
-          id: '1',
-          name: 'Personal Wallet',
-          ownerId: 'demo',
-          sharedWith: [],
-          type: 'personal',
-          balance: 1500.00,
-          currency: 'USD',
-          description: 'My personal expenses',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          name: 'Family Budget',
-          ownerId: 'demo',
-          sharedWith: ['family-member-1'],
-          type: 'family',
-          balance: 2300.00,
-          currency: 'USD',
-          description: 'Shared family expenses',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      setWallets(demoWallets);
-      localStorage.setItem('wallets', JSON.stringify(demoWallets));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wallets', JSON.stringify(wallets));
     }
-  }, []);
+  }, [wallets]);
 
-  const saveWallets = (newWallets: Wallet[]) => {
-    setWallets(newWallets);
-    localStorage.setItem('wallets', JSON.stringify(newWallets));
+  const addWallet = (wallet: Omit<Wallet, 'id'>) => {
+    const newWallet = { ...wallet, id: uuidv4() };
+    setWallets((prevWallets) => [...prevWallets, newWallet]);
   };
 
-  const addWallet = (walletData: Partial<Wallet>) => {
-    const newWallet: Wallet = {
-      id: Date.now().toString(),
-      name: walletData.name || '',
-      ownerId: 'current-user',
-      sharedWith: walletData.sharedWith || [],
-      type: walletData.type || 'personal',
-      balance: walletData.balance || 0,
-      currency: walletData.currency || 'USD',
-      description: walletData.description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const updatedWallets = [...wallets, newWallet];
-    saveWallets(updatedWallets);
-  };
-
-  const updateWallet = (id: string, updates: Partial<Wallet>) => {
-    const updatedWallets = wallets.map(wallet =>
-      wallet.id === id
-        ? { ...wallet, ...updates, updatedAt: new Date().toISOString() }
-        : wallet
+  const updateWallet = (updatedWallet: Wallet) => {
+    setWallets((prevWallets) =>
+      prevWallets.map((wallet) =>
+        wallet.id === updatedWallet.id ? updatedWallet : wallet
+      )
     );
-    saveWallets(updatedWallets);
   };
 
   const deleteWallet = (id: string) => {
-    const updatedWallets = wallets.filter(wallet => wallet.id !== id);
-    saveWallets(updatedWallets);
+    setWallets((prevWallets) => prevWallets.filter((wallet) => wallet.id !== id));
   };
 
   return {
     wallets,
     addWallet,
     updateWallet,
-    deleteWallet
+    deleteWallet,
   };
 }
