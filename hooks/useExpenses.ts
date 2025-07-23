@@ -42,7 +42,7 @@ export function useExpenses() {
         description: expenseData.description || '',
         date: expenseData.date || new Date().toISOString().split('T')[0],
         person: expenseData.person || 'Self',
-        walletId: expenseData.walletId,
+        walletId: expenseData.walletId, // Now this will be a valid database ID
         tags: expenseData.tags || [],
         isRecurring: expenseData.isRecurring || false,
         recurringType: expenseData.recurringType,
@@ -73,7 +73,6 @@ export function useExpenses() {
 
   const updateExpense = async (id: string, updates: Partial<Expense>) => {
     try {
-
       const response = await fetch(`/api/expenses/${id}`, {
         method: 'PUT',
         headers: {

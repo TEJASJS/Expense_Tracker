@@ -65,7 +65,7 @@ export function AddExpenseDialog({
       ...(editExpense ? { id: editExpense.id } : {})
     };
     
-    onAdd(expenseData as any);
+    onAdd(expenseData);
     onOpenChangeAction(false);
   };
 

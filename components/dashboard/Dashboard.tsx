@@ -55,7 +55,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         return (
           <ExpensesList
             expenses={expenses}
-            onUpdate={updateExpense}
+            onEdit={updateExpense}
             onDelete={deleteExpense}
             wallets={wallets}
           />
@@ -68,7 +68,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
             budgets={budgets}
             expenses={expenses}
             onAddBudget={addBudget}
-            onUpdateBudget={updateBudget}
+            onUpdateBudget={(budget) => updateBudget(budget.id, budget)}
             onDeleteBudget={deleteBudget}
           />
         );
@@ -77,9 +77,9 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           <GoalsView
             goals={goals}
             expenses={expenses}
-            onAdd={addGoal}
-            onUpdate={updateGoal}
-            onDelete={deleteGoal}
+            onAddGoal={addGoal}
+            onUpdateGoal={(goal) => updateGoal(goal.id, goal)}
+            onDeleteGoal={deleteGoal}
           />
         );
       case 'wallets':
@@ -87,15 +87,15 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           <WalletsView
             wallets={wallets}
             expenses={expenses}
-            onAdd={addWallet}
-            onUpdate={updateWallet}
-            onDelete={deleteWallet}
+            onAddWallet={addWallet}
+            onUpdateWallet={updateWallet}
+            onDeleteWallet={deleteWallet}
           />
         );
       case 'settings':
         return <SettingsView user={user} onLogout={onLogout} />;
       default:
-        return <ExpensesList expenses={expenses} onUpdate={updateExpense} onDelete={deleteExpense} wallets={wallets} />;
+        return <ExpensesList expenses={expenses} onEdit={updateExpense} onDelete={deleteExpense} wallets={wallets} />;
     }
   };
 
@@ -161,7 +161,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       {/* Add Expense Dialog */}
       <AddExpenseDialog
         open={showAddExpense}
-        onOpenChange={setShowAddExpense}
+        onOpenChangeAction={setShowAddExpense}
         onAdd={handleAddExpense}
         wallets={wallets}
       />

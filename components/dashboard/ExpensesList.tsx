@@ -7,14 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Filter } from 'lucide-react';
 import { format } from 'date-fns';
+import { Wallet } from '@/types/wallet';
 
 interface ExpensesListProps {
   expenses: Expense[];
-  onEdit: (expense: Expense) => void;
+  onEdit: (id: string, expense: Partial<Expense>) => void;
   onDelete: (id: string) => void;
+  wallets?: Wallet[];
 }
 
-export function ExpensesList({ expenses, onEdit, onDelete }: ExpensesListProps) {
+export function ExpensesList({ expenses, onEdit, onDelete, wallets }: ExpensesListProps) {
   const [filter, setFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -37,6 +39,11 @@ export function ExpensesList({ expenses, onEdit, onDelete }: ExpensesListProps) 
 
   // Get unique categories for filter
   const categories = Array.from(new Set(expenses.map(expense => expense.category)));
+  
+  // Define the handleEdit function outside of JSX
+  const handleEdit = (expense: Expense) => {
+    return onEdit(expense.id, expense);
+  };
 
   return (
     <div className="space-y-4">
@@ -113,7 +120,7 @@ export function ExpensesList({ expenses, onEdit, onDelete }: ExpensesListProps) 
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="font-semibold">${expense.amount.toFixed(2)}</div>
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(expense)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(expense)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => onDelete(expense.id)}>
