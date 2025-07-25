@@ -30,30 +30,35 @@ export function AnalyticsView({ expenses }: AnalyticsViewProps) {
     value: amount,
   }));
 
-  // Group expenses by month for BarChart
-  const expensesByMonth = expenses.reduce((acc, expense) => {
-    const date = new Date(expense.date);
-    const monthYear = `${date.toLocaleString('default', { month: 'short' })}-${date.getFullYear()}`;
-    if (!acc[monthYear]) {
-      acc[monthYear] = 0;
-    }
-    acc[monthYear] += expense.amount;
-    return acc;
-  }, {} as Record<string, number>);
+  // Group expenses by day for the current month for BarChart
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
 
-  // Convert to array for Recharts BarChart and sort by date
-  const barChartData = Object.entries(expensesByMonth)
-    .map(([monthYear, amount]) => ({
-      name: monthYear,
-      total: amount,
-    }))
-    .sort((a, b) => {
-      const [monthA, yearA] = a.name.split('-');
-      const [monthB, yearB] = b.name.split('-');
-      const dateA = new Date(`${monthA} 1, ${yearA}`);
-      const dateB = new Date(`${monthB} 1, ${yearB}`);
-      return dateA.getTime() - dateB.getTime();
-    });
+  const expensesByDay = expenses
+    .filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+    })
+    .reduce((acc, expense) => {
+      const day = new Date(expense.date).getDate();
+      if (!acc[day]) {
+        acc[day] = 0;
+      }
+      acc[day] += expense.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+  // Create data for all days of the current month
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const barChartData = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    return {
+      name: `Day ${day}`,
+      total: expensesByDay[day] || 0,
+      day,
+    };
+  });
 
   // Sort categories by amount for display list
   const sortedCategories = Object.entries(expensesByCategory)
@@ -66,7 +71,7 @@ export function AnalyticsView({ expenses }: AnalyticsViewProps) {
           <CardTitle>Expense Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+          <div className="text-2xl font-bold">₹{totalExpenses.toFixed(2)}</div>
           <p className="text-sm text-muted-foreground">Total expenses</p>
         </CardContent>
       </Card>
@@ -100,7 +105,7 @@ export function AnalyticsView({ expenses }: AnalyticsViewProps) {
             {sortedCategories.map(([category, amount]) => (
               <div key={category} className="flex items-center justify-between">
                 <div className="font-medium">{category}</div>
-                <div className="font-semibold">${amount.toFixed(2)}</div>
+                <div className="font-semibold">₹{amount.toFixed(2)}</div>
               </div>
             ))}
           </div>
@@ -109,7 +114,7 @@ export function AnalyticsView({ expenses }: AnalyticsViewProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Spending</CardTitle>
+          <CardTitle>Daily Spending</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -121,10 +126,14 @@ export function AnalyticsView({ expenses }: AnalyticsViewProps) {
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '0.5rem' }} 
+                labelStyle={{ color: '#f9fafb' }} 
+                formatter={(value: number, name: string, props: any) => [`₹${value.toFixed(2)}`, `Day ${props.payload.day}`]}
+              />
               <Legend />
-              <Bar dataKey="total" fill="#8884d8" />
+              <Bar dataKey="total" fill="#8884d8" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

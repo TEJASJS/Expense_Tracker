@@ -1,11 +1,11 @@
 export interface Budget {
   id: string;
   userId: string;
+
   category: string;
-  monthlyLimit: number;
-  currentSpent: number;
-  alertThreshold: number; // percentage (e.g., 80 for 80%)
-  isActive: boolean;
+  amount: number;
+  startDate: string;
+  endDate: string;
   createdAt: string;
   updatedAt: string;
 }

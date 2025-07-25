@@ -53,8 +53,13 @@ export function AddExpenseDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const expenseData = {
-      description,
+    if (!description || !amount || isNaN(parseFloat(amount)) || !walletId) {
+      console.error('Please fill in all required fields');
+      return;
+    }
+    
+    const expenseData: Partial<Expense> = {
+      description: description.trim(),
       amount: parseFloat(amount),
       category,
       date,
@@ -70,34 +75,56 @@ export function AddExpenseDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChangeAction}> {/* Use the new prop name here */}
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={onOpenChangeAction}>
+      <DialogContent 
+        className="sm:max-w-[425px]"
+        aria-labelledby="expense-dialog-title"
+        aria-describedby="expense-dialog-description"
+      >
         <DialogHeader>
-          <DialogTitle>{editExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+          <DialogTitle id="expense-dialog-title">
+            {editExpense ? 'Edit Expense' : 'Add New Expense'}
+          </DialogTitle>
+          <p id="expense-dialog-description" className="sr-only">
+            {editExpense ? 'Edit the expense details' : 'Enter details for a new expense'}
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Description <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Grocery shopping"
+              className="col-span-3"
+              placeholder="What was this expense for?"
               required
+              aria-required="true"
+              minLength={3}
+              maxLength={100}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount ($)</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="25.50"
-              required
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="amount" className="text-right">
+              Amount <span className="text-red-500">*</span>
+            </Label>
+            <div className="col-span-3 relative">
+              <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="pl-7"
+                placeholder="0.00"
+                required
+                aria-required="true"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
@@ -112,11 +139,17 @@ export function AddExpenseDialog({
               </SelectContent>
             </Select>
           </div>
-          {wallets && wallets.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="wallet">Wallet (Optional)</Label>
-              <Select value={walletId} onValueChange={setWalletId}>
-                <SelectTrigger>
+          {wallets && wallets.length > 0 ? (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="wallet" className="text-right">
+                Wallet <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                onValueChange={setWalletId} 
+                value={walletId}
+                required
+              >
+                <SelectTrigger className="col-span-3" id="wallet">
                   <SelectValue placeholder="Select a wallet" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,6 +158,10 @@ export function AddExpenseDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          ) : (
+            <div className="text-center text-sm text-muted-foreground col-span-4 py-4">
+              You need to create a wallet before adding an expense.
             </div>
           )}
           <div className="space-y-2">
@@ -138,7 +175,7 @@ export function AddExpenseDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="submit">{editExpense ? 'Update' : 'Add'} Expense</Button>
+            <Button type="submit" disabled={wallets.length === 0 && !editExpense}>{editExpense ? 'Update' : 'Add'} Expense</Button>
           </DialogFooter>
         </form>
       </DialogContent>

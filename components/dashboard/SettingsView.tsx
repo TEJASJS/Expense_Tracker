@@ -1,17 +1,60 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { useExpenses } from '@/hooks/useExpenses';
 import { User } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Moon, Sun } from 'lucide-react';
 
 interface SettingsViewProps {
   user: User;
-  onLogout: () => void;
+  onLogoutAction: () => void;
 }
 
-export function SettingsView({ user, onLogout }: SettingsViewProps) {
+export function SettingsView({ user, onLogoutAction }: SettingsViewProps) {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const { expenses } = useExpenses();
+
+  const handleExportData = () => {
+    const headers = ['ID', 'Date', 'Amount', 'Category', 'Description', 'Wallet ID'];
+    const csvContent = [
+      headers.join(','),
+      ...expenses.map(e => 
+        [
+          e.id,
+          e.date,
+          e.amount,
+          e.category,
+          `"${e.description.replace(/"/g, '""')}"`,
+          e.wallet_id
+        ].join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'smart-expense-data.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Prevent hydration mismatch by only showing the UI after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Settings</h2>
@@ -25,7 +68,7 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
             <div className="font-medium">Email</div>
             <div className="text-muted-foreground">{user.email}</div>
           </div>
-          <Button variant="outline" onClick={onLogout}>Logout</Button>
+          <Button variant="outline" onClick={onLogoutAction}>Logout</Button>
         </CardContent>
       </Card>
       
@@ -35,8 +78,15 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label htmlFor="dark-mode">Dark Mode</Label>
-            <Switch id="dark-mode" />
+            <div className="flex items-center gap-2">
+              <Label htmlFor="dark-mode">Dark Mode</Label>
+              {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </div>
+            <Switch 
+              id="dark-mode" 
+              checked={theme === 'dark'}
+              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            />
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="notifications">Notifications</Label>
@@ -54,7 +104,7 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
           <CardTitle>Data Management</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline">Export Data</Button>
+          <Button variant="outline" onClick={handleExportData}>Export Data</Button>
           <Button variant="destructive">Delete Account</Button>
         </CardContent>
       </Card>

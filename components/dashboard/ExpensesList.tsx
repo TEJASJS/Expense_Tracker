@@ -11,12 +11,12 @@ import { Wallet } from '@/types/wallet';
 
 interface ExpensesListProps {
   expenses: Expense[];
-  onEdit: (id: string, expense: Partial<Expense>) => void;
-  onDelete: (id: string) => void;
+  onEditAction: (expense: Expense) => void;
+  onDeleteAction: (id: string) => void;
   wallets?: Wallet[];
 }
 
-export function ExpensesList({ expenses, onEdit, onDelete, wallets }: ExpensesListProps) {
+export function ExpensesList({ expenses, onEditAction, onDeleteAction, wallets }: ExpensesListProps) {
   const [filter, setFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -42,7 +42,7 @@ export function ExpensesList({ expenses, onEdit, onDelete, wallets }: ExpensesLi
   
   // Define the handleEdit function outside of JSX
   const handleEdit = (expense: Expense) => {
-    return onEdit(expense.id, expense);
+    onEditAction(expense);
   };
 
   return (
@@ -119,11 +119,11 @@ export function ExpensesList({ expenses, onEdit, onDelete, wallets }: ExpensesLi
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="font-semibold">${expense.amount.toFixed(2)}</div>
+                    <div className="font-semibold">₹{expense.amount.toFixed(2)}</div>
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(expense)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => onDelete(expense.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => onDeleteAction(expense.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

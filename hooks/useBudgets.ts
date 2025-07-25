@@ -1,55 +1,72 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Budget } from '@/types/budget';
 import { Expense } from '@/types/expense';
+import { useAuth } from '@/contexts/AuthContext';
+import { budgetsApi } from '@/lib/api';
 
 export function useBudgets() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const { token } = useAuth();
+
+  const fetchBudgets = useCallback(async () => {
+    if (token) {
+      const response = await budgetsApi.getBudgets(token);
+      if (response.data) {
+        setBudgets(response.data);
+      } else {
+        toast.error(response.error || 'Failed to fetch budgets.');
+        setBudgets([]);
+      }
+    }
+  }, [token]);
 
   useEffect(() => {
-    const savedBudgets = localStorage.getItem('budgets');
-    if (savedBudgets) {
-      setBudgets(JSON.parse(savedBudgets));
-    } else {
-      setBudgets([]); // Initialize with an empty array if no saved budgets
+    fetchBudgets();
+  }, [fetchBudgets]);
+
+  const addBudget = async (budgetData: Omit<Budget, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+    if (!token) {
+      toast.error('Authentication required to add a budget.');
+      return;
     }
-  }, []);
-
-  const saveBudgets = (newBudgets: Budget[]) => {
-    setBudgets(newBudgets);
-    localStorage.setItem('budgets', JSON.stringify(newBudgets));
+    const response = await budgetsApi.createBudget(budgetData, token);
+    if (response.data) {
+      fetchBudgets(); // Refetch to get the latest list with the new ID from DB
+      toast.success('Budget added successfully!');
+    } else {
+      toast.error(response.error || 'Failed to add budget.');
+    }
   };
 
-  const addBudget = (budgetData: Partial<Budget>) => {
-    const newBudget: Budget = {
-      id: Date.now().toString(), // Consider using uuidv4() for consistency if available
-      userId: 'current-user',
-      category: budgetData.category || '',
-      monthlyLimit: budgetData.monthlyLimit || 0,
-      currentSpent: 0,
-      alertThreshold: budgetData.alertThreshold || 80,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const updatedBudgets = [...budgets, newBudget];
-    saveBudgets(updatedBudgets);
+  const updateBudget = async (id: string, updates: Partial<Budget>) => {
+    if (!token) {
+      toast.error('Authentication required to update a budget.');
+      return;
+    }
+    const response = await budgetsApi.updateBudget(id, updates, token);
+    if (response.data) {
+      setBudgets(prev => prev.map(b => (b.id === id ? response.data! : b)));
+      toast.success('Budget updated successfully!');
+    } else {
+      toast.error(response.error || 'Failed to update budget.');
+    }
   };
 
-  const updateBudget = (id: string, updates: Partial<Budget>) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === id
-        ? { ...budget, ...updates, updatedAt: new Date().toISOString() }
-        : budget
-    );
-    saveBudgets(updatedBudgets);
-  };
-
-  const deleteBudget = (id: string) => {
-    const updatedBudgets = budgets.filter(budget => budget.id !== id);
-    saveBudgets(updatedBudgets);
+  const deleteBudget = async (id: string) => {
+    if (!token) {
+      toast.error('Authentication required to delete a budget.');
+      return;
+    }
+    const response = await budgetsApi.deleteBudget(id, token);
+    if (!response.error) {
+      setBudgets(prev => prev.filter(b => b.id !== id));
+      toast.success('Budget deleted successfully!');
+    } else {
+      toast.error(response.error || 'Failed to delete budget.');
+    }
   };
 
   const checkBudgetLimits = (expenses: Expense[]) => {

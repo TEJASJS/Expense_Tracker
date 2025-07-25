@@ -1,43 +1,54 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Budget } from '@/types/budget';
+import { EXPENSE_CATEGORIES } from '@/types/expense';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AddBudgetDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (budget: Omit<Budget, 'id'>) => void;
+  onOpenChangeAction: (open: boolean) => void;
+  onSaveAction: (budget: Omit<Budget, 'id' | 'name'>) => void;
   initialData?: Budget | null;
 }
 
-export function AddBudgetDialog({ open, onOpenChange, onSave, initialData }: AddBudgetDialogProps) {
+export function AddBudgetDialog({ open, onOpenChangeAction: onOpenChange, onSaveAction: onSave, initialData }: AddBudgetDialogProps) {
+
+  const [amount, setAmount] = useState<number | ''>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [category, setCategory] = useState('');
-  const [monthlyLimit, setMonthlyLimit] = useState<number | ''>('');
 
   useEffect(() => {
     if (initialData) {
-      setCategory(initialData.category);
-      setMonthlyLimit(initialData.monthlyLimit);
+      setAmount(initialData.amount);
+      if (initialData.startDate) {
+        setStartDate(initialData.startDate.split('T')[0]); // Format for date input
+      }
+      if (initialData.endDate) {
+        setEndDate(initialData.endDate.split('T')[0]); // Format for date input
+      }
+      setCategory(initialData.category || '');
     } else {
+      setAmount('');
+      setStartDate('');
+      setEndDate('');
       setCategory('');
-      setMonthlyLimit('');
     }
   }, [initialData, open]);
 
   const handleSubmit = () => {
-    if (category && monthlyLimit !== '') {
-      const newBudget: Omit<Budget, 'id'> = {
-        userId: '', // This should be replaced with the actual user ID
+    if (amount !== '' && startDate && endDate && category) {
+      const newBudget: Omit<Budget, 'id' | 'name'> = {
+        amount: Number(amount),
+        startDate,
+        endDate,
         category,
-        monthlyLimit: Number(monthlyLimit),
-        currentSpent: 0,
-        alertThreshold: 80, // Default alert threshold
-        isActive: true,
+        userId: '', // This will be set in the parent component/hook
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -46,51 +57,83 @@ export function AddBudgetDialog({ open, onOpenChange, onSave, initialData }: Add
     }
   };
 
-  const categories = [
-    'Groceries', 'Utilities', 'Rent', 'Transportation', 'Entertainment',
-    'Dining Out', 'Shopping', 'Healthcare', 'Education', 'Salary', 'Investments', 'Other'
-  ];
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent 
+        className="sm:max-w-[425px]"
+      >
         <DialogHeader>
           <DialogTitle>{initialData ? 'Edit Budget' : 'Add New Budget'}</DialogTitle>
+          <DialogDescription>
+            {initialData ? 'Edit your budget details here. Click update when you are done.' : 'Set up a new monthly budget. Click add when you are done.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category" className="text-right">
-              Category
+              Category <span className="text-red-500">*</span>
             </Label>
             <Select onValueChange={setCategory} value={category}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="monthlyLimit" className="text-right">
-              Monthly Limit
+            <Label htmlFor="amount" className="text-right">
+              Amount <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="monthlyLimit"
+              id="amount"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
               type="number"
-              value={monthlyLimit}
-              onChange={(e) => setMonthlyLimit(Number(e.target.value))}
               className="col-span-3"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="startDate" className="text-right">
+              Start Date <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              type="date"
+              className="col-span-3"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="endDate" className="text-right">
+              End Date <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              type="date"
+              className="col-span-3"
+              required
             />
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSubmit}>
-            {initialData ? 'Save Changes' : 'Add Budget'}
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            disabled={!amount || !startDate || !endDate || !category}
+            aria-disabled={!amount || !startDate || !endDate || !category}
+          >
+            {initialData ? 'Update' : 'Add'} Budget
           </Button>
         </DialogFooter>
       </DialogContent>

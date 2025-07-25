@@ -19,19 +19,30 @@ import {
 
 interface SidebarProps {
   currentView: ViewType;
-  onViewChange: (view: ViewType) => void;
+  onViewChangeAction: (view: ViewType) => void;
+  onLogoutAction: () => void;
   user: User;
   expenses: Expense[];
   budgets: Budget[];
+  totalSpent: number;
+  className?: string;
 }
 
-export function Sidebar({ currentView, onViewChange, user, expenses, budgets }: SidebarProps) {
+export function Sidebar({ 
+  currentView, 
+  onViewChangeAction, 
+  onLogoutAction, 
+  user, 
+  expenses, 
+  budgets,
+  totalSpent,
+  className = '' 
+}: SidebarProps) {
   // Calculate this month's expenses
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
   const thisMonthExpenses = expenses.filter(expense => {
     const expenseDate = new Date(expense.date);
-    return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+    const today = new Date();
+    return expenseDate.getMonth() === today.getMonth() && expenseDate.getFullYear() === today.getFullYear();
   });
   
   const totalThisMonth = thisMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -92,9 +103,9 @@ export function Sidebar({ currentView, onViewChange, user, expenses, budgets }: 
           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <CreditCard className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h2 className="font-semibold text-gray-900">SmartExpense</h2>
-            <p className="text-sm text-gray-500">Welcome, {user.name}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{user.full_name || user.email}</p>
+            <p className="text-xs text-gray-500 truncate">{user.email}</p>
           </div>
         </div>
       </div>
@@ -109,10 +120,10 @@ export function Sidebar({ currentView, onViewChange, user, expenses, budgets }: 
             )}
           </div>
           <div className="text-2xl font-bold text-gray-900">
-            ${totalThisMonth.toFixed(2)}
+            ₹{totalSpent.toFixed(2)}
           </div>
           <div className="text-sm text-gray-500">
-            {thisMonthExpenses.length} transactions
+            {thisMonthExpenses.length} transactions this month
           </div>
         </div>
       </div>
@@ -132,7 +143,7 @@ export function Sidebar({ currentView, onViewChange, user, expenses, budgets }: 
                   ? "bg-blue-600 text-white hover:bg-blue-700" 
                   : "text-gray-700 hover:bg-gray-100"
               }`}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => onViewChangeAction(item.id)}
             >
               <Icon className="h-4 w-4 mr-3" />
               <span className="flex-1 text-left">{item.label}</span>
@@ -152,7 +163,7 @@ export function Sidebar({ currentView, onViewChange, user, expenses, budgets }: 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200">
         <div className="text-xs text-gray-500 text-center">
-          © 2024 SmartExpense
+          &copy; 2024 SmartExpense
         </div>
       </div>
     </div>

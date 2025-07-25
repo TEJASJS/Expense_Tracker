@@ -3,20 +3,20 @@
 import { useState, useEffect } from 'react';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function Home() {
-  const { user, loading, login, logout } = useAuth();
+  const { user, isLoading, login, register, logout } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isLoading && !user) {
       setShowAuth(true);
     }
-  }, [loading, user]);
+  }, [isLoading, user]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-bg">
         <LoadingSpinner />
@@ -36,11 +36,12 @@ export default function Home() {
             open={showAuth} 
             onOpenChange={setShowAuth}
             onLogin={login}
+            onRegisterAction={register}
           />
         </div>
       </div>
     );
   }
 
-  return <Dashboard user={user} onLogout={logout} />;
+  return <Dashboard user={user} onLogoutAction={logout} />;
 }

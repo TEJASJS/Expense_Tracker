@@ -1,95 +1,183 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Wallet } from '@/types/wallet';
+import { useState, useEffect, useCallback } from 'react';
+import { Wallet, WalletType, WalletApiResponse } from '@/types/wallet';
+import { walletsApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
-export function useWallets() {
+
+
+interface UseWalletsReturn {
+  wallets: Wallet[];
+  loading: boolean;
+  error: string | null;
+  addWallet: (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Wallet>;
+  addBalanceToWallet: (id: string, amount: number) => Promise<Wallet>;
+  deleteWallet: (id: string) => Promise<void>;
+  refreshWallets: () => Promise<void>;
+}
+
+export function useWallets(): UseWalletsReturn {
   const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { token, isAuthenticated, user } = useAuth();
+  
+  // Log auth state for debugging
   useEffect(() => {
-    loadWallets();
-  }, []);
+    console.log('Auth state in useWallets:', { isAuthenticated, token: token ? 'Token exists' : 'No token' });
+  }, [isAuthenticated, token]);
 
-  const loadWallets = async () => {
+  const loadWallets = useCallback(async () => {
+    if (!token) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.id) {
-        const response = await fetch(`/api/wallets?userId=${user.id}`);
-        if (response.ok) {
-          const wallets = await response.json();
-          setWallets(wallets);
-        }
+      const response = await walletsApi.getWallets(token);
+      
+      if (response.data) {
+        // Transform the API response to match the Wallet type
+        const formattedWallets = (response.data as WalletApiResponse[]).map(wallet => ({
+          id: wallet.id.toString(),
+          name: wallet.name,
+          type: wallet.type as WalletType,
+          balance: wallet.balance,
+          currency: wallet.currency,
+          description: wallet.description || '',
+          createdAt: wallet.created_at,
+          updatedAt: wallet.updated_at || wallet.created_at,
+          ownerId: wallet.owner_id.toString(),
+          sharedWith: wallet.shared_with.map(id => id.toString())
+        }));
+        
+        setWallets(formattedWallets);
+      } else if (response.error) {
+        setError(response.error);
       }
-    } catch (error) {
-      console.error('Error loading wallets:', error);
+    } catch (err) {
+      console.error('Error loading wallets:', err);
+      setError('Failed to load wallets');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadWallets();
+  }, [loadWallets]);
 
   const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.id) throw new Error('User not authenticated');
-
-      const response = await fetch(`/api/wallets?userId=${user.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(walletData),
+    console.log('addWallet called with:', { walletData, hasToken: !!token, isAuthenticated });
+    
+    if (!token) {
+      const errorMsg = 'Authentication required. Please log in to create a wallet.';
+      console.error(errorMsg, { 
+        isAuthenticated, 
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to add wallet');
+      throw new Error(errorMsg);
+    }
+    
+    try {
+      console.log('Creating wallet with token:', token.substring(0, 10) + '...');
+      
+      // Get user ID from auth context
+      if (!user?.id) {
+        throw new Error('User information not found. Please log in again.');
       }
+      const walletPayload = {
+        name: walletData.name,
+        type: walletData.type || 'personal',
+        description: walletData.description,
+        currency: walletData.currency || 'USD',
+        balance: walletData.balance || 0,
+        shared_with: walletData.sharedWith || []
+      };
+      console.log('Sending wallet payload:', walletPayload);
+      
+      const response = await walletsApi.createWallet(walletPayload, token);
 
-      const newWallet = await response.json();
-      setWallets(prev => [...prev, newWallet]);
-      return newWallet;
+      if (response?.data) {
+        const apiWallet = response.data as WalletApiResponse;
+        const newWallet: Wallet = {
+          id: apiWallet.id.toString(),
+          name: apiWallet.name,
+          type: apiWallet.type as WalletType,
+          balance: apiWallet.balance,
+          currency: apiWallet.currency,
+          description: apiWallet.description || '',
+          ownerId: apiWallet.owner_id.toString(),
+          sharedWith: apiWallet.shared_with.map(id => id.toString()),
+          createdAt: apiWallet.created_at,
+          updatedAt: apiWallet.updated_at || apiWallet.created_at
+        };
+        
+        setWallets(prev => [...prev, newWallet]);
+        return newWallet;
+      } else {
+        throw new Error(response.error || 'Failed to add wallet');
+      }
     } catch (error) {
       console.error('Error adding wallet:', error);
       throw error;
     }
   };
 
-  const updateWallet = async (id: string, updates: Partial<Wallet>) => {
+  const addBalanceToWallet = async (id: string, amount: number): Promise<Wallet> => {
+    if (!token) throw new Error('Not authenticated');
+    
     try {
-      const response = await fetch(`/api/wallets/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
+      const response = await walletsApi.addBalanceToWallet(id, amount, token);
 
-      if (!response.ok) {
-        throw new Error('Failed to update wallet');
+      if (response.error) {
+        throw new Error(response.error);
       }
-      
-      setWallets(prev => prev.map(wallet =>
-        wallet.id === id
-          ? { ...wallet, ...updates, updatedAt: new Date().toISOString() }
-          : wallet
-      ));
+
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+
+      const updatedWalletData = response.data as WalletApiResponse;
+      const updatedWallet: Wallet = {
+        id: updatedWalletData.id.toString(),
+        name: updatedWalletData.name,
+        type: updatedWalletData.type as WalletType,
+        balance: updatedWalletData.balance,
+        currency: updatedWalletData.currency,
+        description: updatedWalletData.description || '',
+        ownerId: updatedWalletData.owner_id.toString(),
+        sharedWith: updatedWalletData.shared_with.map(id => id.toString()),
+        createdAt: updatedWalletData.created_at,
+        updatedAt: updatedWalletData.updated_at || updatedWalletData.created_at,
+      };
+
+      setWallets(prev =>
+        prev.map(wallet =>
+          wallet.id === id ? updatedWallet : wallet
+        )
+      );
+
+      return updatedWallet;
     } catch (error) {
-      console.error('Error updating wallet:', error);
+      console.error('[useWallets] Error in addBalanceToWallet:', error);
       throw error;
     }
   };
 
   const deleteWallet = async (id: string) => {
+    if (!token) throw new Error('Not authenticated');
+    
     try {
-      const response = await fetch(`/api/wallets/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete wallet');
+      const response = await walletsApi.deleteWallet(id, token);
+      
+      if (!response.error) {
+        setWallets(prev => prev.filter(wallet => wallet.id !== id));
+      } else {
+        throw new Error(response.error);
       }
-
-      setWallets(prev => prev.filter(wallet => wallet.id !== id));
     } catch (error) {
       console.error('Error deleting wallet:', error);
       throw error;
@@ -99,188 +187,10 @@ export function useWallets() {
   return {
     wallets,
     loading,
+    error,
     addWallet,
-    updateWallet,
-    deleteWallet
+    addBalanceToWallet,
+    deleteWallet,
+    refreshWallets: loadWallets,
   };
 }
-// Update addWallet in useWallets hook
-const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) throw new Error('User not authenticated');
-
-    const response = await fetch(`/api/wallets?userId=${user.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(walletData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add wallet');
-    }
-
-    const newWallet = await response.json();
-    // Only update state after API call succeeds
-    setWallets(prev => [...prev, newWallet]);
-    return newWallet;
-  } catch (error) {
-    console.error('Error adding wallet:', error);
-    throw error;
-  }
-};// Update addWallet in useWallets hook
-const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) throw new Error('User not authenticated');
-
-    const response = await fetch(`/api/wallets?userId=${user.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(walletData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add wallet');
-    }
-
-    const newWallet = await response.json();
-    // Only update state after API call succeeds
-    setWallets(prev => [...prev, newWallet]);
-    return newWallet;
-  } catch (error) {
-    console.error('Error adding wallet:', error);
-    throw error;
-  }
-};// Update addWallet in useWallets hook
-const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) throw new Error('User not authenticated');
-
-    const response = await fetch(`/api/wallets?userId=${user.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(walletData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add wallet');
-    }
-
-    const newWallet = await response.json();
-    // Only update state after API call succeeds
-    setWallets(prev => [...prev, newWallet]);
-    return newWallet;
-  } catch (error) {
-    console.error('Error adding wallet:', error);
-    throw error;
-  }
-};// Update addWallet in useWallets hook
-const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) throw new Error('User not authenticated');
-
-    const response = await fetch(`/api/wallets?userId=${user.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(walletData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add wallet');
-    }
-
-    const newWallet = await response.json();
-    // Only update state after API call succeeds
-    setWallets(prev => [...prev, newWallet]);
-    return newWallet;
-  } catch (error) {
-    console.error('Error adding wallet:', error);
-    throw error;
-  }
-};// Update addWallet in useWallets hook
-const addWallet = async (walletData: Omit<Wallet, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) throw new Error('User not authenticated');
-
-    const response = await fetch(`/api/wallets?userId=${user.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(walletData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add wallet');
-    }
-
-    const newWallet = await response.json();
-    // Only update state after API call succeeds
-    setWallets(prev => [...prev, newWallet]);
-    return newWallet;
-  } catch (error) {
-    console.error('Error adding wallet:', error);
-    throw error;
-  }
-};
-// Add this function to the useWallets hook
-
-const migrateLocalWallets = async () => {
-  try {
-    // Check if we've already migrated
-    const migrated = localStorage.getItem('wallets_migrated');
-    if (migrated === 'true') return;
-
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) return;
-
-    // Get wallets from local storage
-    const localWallets = JSON.parse(localStorage.getItem('wallets') || '[]');
-    if (localWallets.length === 0) {
-      // No wallets to migrate
-      localStorage.setItem('wallets_migrated', 'true');
-      return;
-    }
-
-    // Migrate each wallet to the database
-    for (const wallet of localWallets) {
-      const walletData = {
-        name: wallet.name,
-        ownerId: user.id,
-        sharedWith: wallet.sharedWith || [],
-        type: wallet.type || 'personal',
-        balance: wallet.balance || 0,
-        currency: wallet.currency || 'USD',
-        description: wallet.description
-      };
-
-      await addWallet(walletData);
-    }
-
-    // Mark as migrated
-    localStorage.setItem('wallets_migrated', 'true');
-    // Clear local wallets
-    localStorage.removeItem('wallets');
-  } catch (error) {
-    console.error('Error migrating wallets:', error);
-  }
-};
-
-// Call this function in the useEffect
-useEffect(() => {
-  loadWallets().then(() => {
-    migrateLocalWallets();
-  });
-}, []);

@@ -13,12 +13,12 @@ import { MoreHorizontal } from 'lucide-react';
 interface BudgetsViewProps {
   budgets: Budget[];
   expenses: Expense[];
-  onAddBudget: (budget: Omit<Budget, 'id'>) => void;
-  onUpdateBudget: (budget: Budget) => void;
-  onDeleteBudget: (id: string) => void;
+  onAddBudgetAction: (budget: Omit<Budget, 'id' | 'name'>) => void;
+  onUpdateBudgetAction: (budget: Omit<Budget, 'name'>) => void;
+  onDeleteBudgetAction: (id: string) => void;
 }
 
-export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, onDeleteBudget }: BudgetsViewProps) {
+export function BudgetsView({ budgets, expenses, onAddBudgetAction, onUpdateBudgetAction, onDeleteBudgetAction }: BudgetsViewProps) {
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null); // State to hold budget being edited
 
@@ -26,9 +26,20 @@ export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, on
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
-  const thisMonthExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.date);
-    return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+  const thisMonthExpenses = (expenses || []).filter((expense) => {
+    try {
+      // Ensure the date is properly parsed, handling both string and Date objects
+      const expenseDate = expense.date ? new Date(expense.date) : null;
+      if (!expenseDate || isNaN(expenseDate.getTime())) {
+        console.warn('Invalid date for expense:', expense.id, 'date:', expense.date);
+        return false;
+      }
+      return expenseDate.getMonth() === currentMonth && 
+             expenseDate.getFullYear() === currentYear;
+    } catch (error) {
+      console.error('Error processing expense date:', error);
+      return false;
+    }
   });
   
   const expensesByCategory = thisMonthExpenses.reduce((acc, expense) => {
@@ -57,8 +68,8 @@ export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, on
         <div className="space-y-4">
           {budgets.map(budget => {
             const spent = expensesByCategory[budget.category] || 0;
-            const percentage = Math.min(Math.round((spent / budget.monthlyLimit) * 100), 100);
-            const isOverBudget = spent > budget.monthlyLimit;
+            const percentage = Math.min(Math.round((spent / budget.amount) * 100), 100);
+            const isOverBudget = spent > budget.amount;
             
             return (
               <Card key={budget.id} className={isOverBudget ? 'border-red-500' : ''}>
@@ -67,8 +78,8 @@ export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, on
                     <div className="font-medium">{budget.category}</div>
                     <div className="text-sm">
                       <span className={isOverBudget ? 'text-red-500 font-bold' : ''}>
-                        ${spent.toFixed(2)}
-                      </span> / ${budget.monthlyLimit.toFixed(2)}
+                        ₹{spent.toFixed(2)}
+                      </span> / ₹{budget.amount.toFixed(2)}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -84,7 +95,7 @@ export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, on
                         }}>
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDeleteBudget(budget.id)}>
+                        <DropdownMenuItem onClick={() => onDeleteBudgetAction(budget.id)}>
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -98,18 +109,18 @@ export function BudgetsView({ budgets, expenses, onAddBudget, onUpdateBudget, on
         </div>
       )}
       <AddBudgetDialog
-        open={isAddBudgetDialogOpen}
-        onOpenChange={(open) => {
-          setIsAddBudgetDialogOpen(open);
-          if (!open) {
+        open={isAddBudgetDialogOpen || !!editingBudget}
+        onOpenChangeAction={(isOpen) => {
+          setIsAddBudgetDialogOpen(isOpen);
+          if (!isOpen) {
             setEditingBudget(null); // Clear editing budget when dialog closes
           }
         }}
-        onSave={(newBudget) => {
+        onSaveAction={(newBudget) => {
           if (editingBudget) {
-            onUpdateBudget({ ...newBudget, id: editingBudget.id });
+            onUpdateBudgetAction({ ...editingBudget, ...newBudget });
           } else {
-            onAddBudget(newBudget);
+            onAddBudgetAction(newBudget);
           }
           setIsAddBudgetDialogOpen(false);
           setEditingBudget(null);

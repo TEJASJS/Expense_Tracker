@@ -10,7 +10,7 @@ const pool = new Pool({
 
 export interface DatabaseUser {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
   hashed_password: string;
   created_at: string;
@@ -80,7 +80,7 @@ export async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        name text NOT NULL,
+        full_name text NOT NULL,
         email text UNIQUE NOT NULL,
         hashed_password text NOT NULL,
         created_at timestamptz DEFAULT now()
@@ -173,13 +173,13 @@ export const db = {
   },
 
   // Users
-  async createUser(user: { name: string; email: string; password: string }) {
+  async createUser(user: { full_name: string; email: string; password: string }) {
     const client = await pool.connect();
     try {
       const hashedPassword = await bcrypt.hash(user.password, 10);
       const result = await client.query(
-        'INSERT INTO users (name, email, hashed_password) VALUES ($1, $2, $3) RETURNING id, name, email, created_at',
-        [user.name, user.email, hashedPassword]
+        'INSERT INTO users (full_name, email, hashed_password) VALUES ($1, $2, $3) RETURNING id, full_name, email, created_at',
+        [user.full_name, user.email, hashedPassword]
       );
       return result.rows[0];
     } finally {
@@ -445,5 +445,37 @@ export const db = {
   }
 };
 
+// Track database initialization status
+let isDbInitialized = false;
+let initPromise: Promise<void> | null = null;
+
+// Initialize database with proper error handling and status tracking
+const initializeDb = async () => {
+  if (isDbInitialized) return;
+  
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        await db.init();
+        isDbInitialized = true;
+        console.log('Database initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+        throw error;
+      }
+    })();
+  }
+  
+  return initPromise;
+};
+
+// Export a function to ensure database is initialized
+export const ensureDbInitialized = async () => {
+  if (!isDbInitialized) {
+    await initializeDb();
+  }
+  return true;
+};
+
 // Initialize database on module load
-db.init().catch(console.error);
+initializeDb().catch(console.error);
