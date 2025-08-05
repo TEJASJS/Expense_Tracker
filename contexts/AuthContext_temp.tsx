@@ -59,7 +59,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
       }
     };
-    fetchUser();
+    if (token) {
+        fetchUser();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const login = async (email: string, password: string) => {

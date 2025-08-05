@@ -90,8 +90,8 @@ export const aiCategorizer = {
     // Check for budget overruns
     budgets.forEach(budget => {
       const spent = categoryTotals[budget.category] || 0;
-      if (spent > budget.monthlyLimit) {
-        tips.push(`You've exceeded your ${budget.category} budget by $${(spent - budget.monthlyLimit).toFixed(2)}. Try to reduce spending in this area.`);
+      if (spent > budget.amount) {
+        tips.push(`You've exceeded your ${budget.category} budget by $${(spent - budget.amount).toFixed(2)}. Try to reduce spending in this area.`);
       }
     });
     

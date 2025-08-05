@@ -62,3 +62,16 @@ async def login_for_access_token(
 async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+
+@router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete the current user's account.
+    """
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account deleted successfully"}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useExpenses } from '@/hooks/useExpenses';
-import { User } from '@/hooks/useAuth';
+import { User } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -13,9 +13,10 @@ import { Moon, Sun } from 'lucide-react';
 interface SettingsViewProps {
   user: User;
   onLogoutAction: () => void;
+  onDeleteAccountAction: () => void;
 }
 
-export function SettingsView({ user, onLogoutAction }: SettingsViewProps) {
+export function SettingsView({ user, onLogoutAction, onDeleteAccountAction }: SettingsViewProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { expenses } = useExpenses();
@@ -31,7 +32,7 @@ export function SettingsView({ user, onLogoutAction }: SettingsViewProps) {
           e.amount,
           e.category,
           `"${e.description.replace(/"/g, '""')}"`,
-          e.wallet_id
+          e.walletId
         ].join(',')
       )
     ].join('\n');
@@ -105,7 +106,7 @@ export function SettingsView({ user, onLogoutAction }: SettingsViewProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <Button variant="outline" onClick={handleExportData}>Export Data</Button>
-          <Button variant="destructive">Delete Account</Button>
+                    <Button variant="destructive" onClick={onDeleteAccountAction}>Delete Account</Button>
         </CardContent>
       </Card>
     </div>

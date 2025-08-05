@@ -153,7 +153,7 @@ export function GoalForm({ initialData, onSubmitAction, onCancelAction, isSubmit
               onSelect={(date) => {
                 setFormData(prev => ({
                   ...prev,
-                  deadline: date ? date.toISOString() : undefined
+                  deadline: date ? date.toISOString() : ''
                 }));
               }}
               initialFocus

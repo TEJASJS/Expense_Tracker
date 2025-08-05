@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User } from '@/hooks/useAuth';
+import { User } from '@/contexts/AuthContext';
 import { Expense } from '@/types/expense';
 import { Budget } from '@/types/budget';
 import { ViewType } from './Dashboard';
@@ -14,7 +14,8 @@ import {
   Settings,
   Receipt,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -52,7 +53,7 @@ export function Sidebar({
     const categoryExpenses = thisMonthExpenses
       .filter(expense => expense.category === budget.category)
       .reduce((sum, expense) => sum + expense.amount, 0);
-    return categoryExpenses > budget.monthlyLimit;
+    return categoryExpenses > budget.amount;
   }).length;
 
   const menuItems = [
@@ -96,75 +97,70 @@ export function Sidebar({
   ];
 
   return (
-    <div className="bg-white border-r border-gray-200 h-full flex flex-col">
+    <div className={`bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full flex flex-col ${className}`}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <CreditCard className="h-5 w-5 text-white" />
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+            <CreditCard className="h-6 w-6 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{user.full_name || user.email}</p>
-            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.full_name || user.email}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
           </div>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">This Month</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">This Month</span>
             {budgetViolations > 0 && (
               <AlertTriangle className="h-4 w-4 text-red-500" />
             )}
           </div>
-          <div className="text-2xl font-bold text-gray-900">
-            ₹{totalSpent.toFixed(2)}
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            ₹{totalThisMonth.toFixed(2)}
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {thisMonthExpenses.length} transactions this month
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentView === item.id;
-          
-          return (
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="px-4 space-y-1">
+          {menuItems.map((item) => (
             <Button
               key={item.id}
-              variant={isActive ? "default" : "ghost"}
-              className={`w-full justify-start ${
-                isActive 
-                  ? "bg-blue-600 text-white hover:bg-blue-700" 
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+              variant={currentView === item.id ? 'secondary' : 'ghost'}
+              className={`w-full justify-start text-left mb-1 ${currentView === item.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}
               onClick={() => onViewChangeAction(item.id)}
             >
-              <Icon className="h-4 w-4 mr-3" />
-              <span className="flex-1 text-left">{item.label}</span>
+              <item.icon className={`h-5 w-5 mr-3 ${currentView === item.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+              <span>{item.label}</span>
               {item.badge && (
-                <Badge 
-                  variant={item.badgeVariant || "secondary"}
-                  className="ml-2"
-                >
+                <Badge variant={item.badgeVariant || 'secondary'} className="ml-auto">
                   {item.badge}
                 </Badge>
               )}
             </Button>
-          );
-        })}
-      </nav>
+          ))}
+        </nav>
+      </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 text-center">
-          &copy; 2024 SmartExpense
-        </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700"
+          onClick={onLogoutAction}
+        >
+          <LogOut className="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" />
+          Logout
+        </Button>
       </div>
     </div>
   );

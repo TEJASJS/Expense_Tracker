@@ -87,11 +87,11 @@ export function useBudgets() {
         .filter(expense => expense.category === budget.category)
         .reduce((sum, expense) => sum + expense.amount, 0);
 
-      if (categoryExpenses > budget.monthlyLimit) {
+      if (categoryExpenses > budget.amount) {
         violations.push({
           category: budget.category,
-          amount: categoryExpenses - budget.monthlyLimit,
-          limit: budget.monthlyLimit
+          amount: categoryExpenses - budget.amount,
+          limit: budget.amount
         });
       }
     });

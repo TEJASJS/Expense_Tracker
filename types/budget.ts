@@ -1,4 +1,5 @@
 export interface Budget {
+  isActive?: boolean;
   id: string;
   userId: string;
 

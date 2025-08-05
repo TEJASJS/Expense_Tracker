@@ -18,12 +18,12 @@ import {
 
 interface AuthDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onLogin: (email: string, password: string) => Promise<any>;
+  onOpenChangeAction: (open: boolean) => void;
+  onLoginAction: (email: string, password: string) => Promise<any>;
   onRegisterAction: (email: string, password: string, name: string) => Promise<any>;
 }
 
-export function AuthDialog({ open, onOpenChange, onLogin, onRegisterAction }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChangeAction, onLoginAction, onRegisterAction }: AuthDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -39,9 +39,9 @@ export function AuthDialog({ open, onOpenChange, onLogin, onRegisterAction }: Au
 
     setIsLoading(true);
     try {
-      await onLogin(loginData.email, loginData.password);
+      await onLoginAction(loginData.email, loginData.password);
       toast.success('Welcome back!');
-      onOpenChange(false);
+      onOpenChangeAction(false);
     } catch (error) {
       toast.error('Login failed. Please try again.');
     } finally {
@@ -60,7 +60,7 @@ export function AuthDialog({ open, onOpenChange, onLogin, onRegisterAction }: Au
     try {
       await onRegisterAction(signupData.email, signupData.password, signupData.name);
       toast.success('Account created successfully!');
-      onOpenChange(false);
+      onOpenChangeAction(false);
     } catch (error) {
       toast.error('Signup failed. Please try again.');
     } finally {
@@ -71,9 +71,9 @@ export function AuthDialog({ open, onOpenChange, onLogin, onRegisterAction }: Au
   const handleDemoLogin = async () => {
     setIsLoading(true);
     try {
-      await onLogin('demo@smartexpense.com', 'demo123');
+      await onLoginAction('demo@smartexpense.com', 'demo123');
       toast.success('Welcome to the demo!');
-      onOpenChange(false);
+      onOpenChangeAction(false);
     } catch (error) {
       toast.error('Demo login failed. Please try again.');
     } finally {
@@ -84,7 +84,7 @@ export function AuthDialog({ open, onOpenChange, onLogin, onRegisterAction }: Au
   if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChangeAction}>
       <DialogContent 
         className="sm:max-w-[425px] bg-gray-900 text-white border-gray-800"
         onInteractOutside={(e) => e.preventDefault()}

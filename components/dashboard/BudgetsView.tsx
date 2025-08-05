@@ -3,83 +3,110 @@
 import { useState } from 'react';
 import { Budget } from '@/types/budget';
 import { Expense } from '@/types/expense';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AddBudgetDialog } from './AddBudgetDialog'; // Import the new dialog
+import { AddBudgetDialog } from './AddBudgetDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, AlertTriangle, Check, Target } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface BudgetsViewProps {
   budgets: Budget[];
   expenses: Expense[];
-  onAddBudgetAction: (budget: Omit<Budget, 'id' | 'name'>) => void;
-  onUpdateBudgetAction: (budget: Omit<Budget, 'name'>) => void;
-  onDeleteBudgetAction: (id: string) => void;
+  onAddBudgetAction: (budget: Omit<Budget, 'id'>) => Promise<void>;
+  onUpdateBudgetAction: (budget: Budget) => Promise<void>;
+  onDeleteBudgetAction: (id: string) => Promise<void>;
 }
 
-export function BudgetsView({ budgets, expenses, onAddBudgetAction, onUpdateBudgetAction, onDeleteBudgetAction }: BudgetsViewProps) {
+export function BudgetsView({ 
+  budgets, 
+  expenses, 
+  onAddBudgetAction, 
+  onUpdateBudgetAction, 
+  onDeleteBudgetAction 
+}: BudgetsViewProps) {
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<Budget | null>(null); // State to hold budget being edited
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
-  // Calculate current month's expenses by category
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  // Calculate expenses by category for the current month
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
   
-  const thisMonthExpenses = (expenses || []).filter((expense) => {
-    try {
-      // Ensure the date is properly parsed, handling both string and Date objects
-      const expenseDate = expense.date ? new Date(expense.date) : null;
-      if (!expenseDate || isNaN(expenseDate.getTime())) {
-        console.warn('Invalid date for expense:', expense.id, 'date:', expense.date);
-        return false;
-      }
-      return expenseDate.getMonth() === currentMonth && 
-             expenseDate.getFullYear() === currentYear;
-    } catch (error) {
-      console.error('Error processing expense date:', error);
-      return false;
-    }
+  const currentMonthExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
   });
   
-  const expensesByCategory = thisMonthExpenses.reduce((acc, expense) => {
-    const { category, amount } = expense;
-    if (!acc[category]) {
-      acc[category] = 0;
+  const expensesByCategory: Record<string, number> = {};
+  currentMonthExpenses.forEach(expense => {
+    if (expensesByCategory[expense.category]) {
+      expensesByCategory[expense.category] += expense.amount;
+    } else {
+      expensesByCategory[expense.category] = expense.amount;
     }
-    acc[category] += amount;
-    return acc;
-  }, {} as Record<string, number>);
+  });
+
+  const handleSaveBudget = async (budget: Omit<Budget, 'id' | 'name'>) => {
+    if (editingBudget) {
+      await onUpdateBudgetAction({ ...editingBudget, ...budget });
+    } else {
+      await onAddBudgetAction(budget as Omit<Budget, 'id'>);
+    }
+    setEditingBudget(null);
+    setIsAddBudgetDialogOpen(false);
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this budget?')) {
+      await onDeleteBudgetAction(id);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Monthly Budgets</h2>
-        <Button onClick={() => setIsAddBudgetDialogOpen(true)}>Add Budget</Button> {/* Open dialog on click */}
+        <Button 
+          onClick={() => {
+            setEditingBudget(null);
+            setIsAddBudgetDialogOpen(true);
+          }}
+          className="bg-primary hover:bg-primary/90 text-white shadow-sm"
+        >
+          Add Budget
+        </Button>
       </div>
       
       {budgets.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 text-center text-muted-foreground">
-            No budgets set. Add your first budget to start tracking your spending limits.
+        <Card className="dashboard-card">
+          <CardContent className="pt-6 text-center text-muted-foreground p-10">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <Target className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="font-medium text-lg">No budgets set</h3>
+              <p className="text-sm">Add your first budget to start tracking your spending limits.</p>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {budgets.map(budget => {
             const spent = expensesByCategory[budget.category] || 0;
             const percentage = Math.min(Math.round((spent / budget.amount) * 100), 100);
             const isOverBudget = spent > budget.amount;
+            const isCloseToLimit = percentage >= 80 && percentage < 100;
             
             return (
-              <Card key={budget.id} className={isOverBudget ? 'border-red-500' : ''}>
-                <CardContent className="pt-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="font-medium">{budget.category}</div>
-                    <div className="text-sm">
-                      <span className={isOverBudget ? 'text-red-500 font-bold' : ''}>
-                        ₹{spent.toFixed(2)}
-                      </span> / ₹{budget.amount.toFixed(2)}
+              <Card 
+                key={budget.id} 
+                className={`dashboard-card dashboard-card-hover ${isOverBudget ? 'border-destructive' : isCloseToLimit ? 'border-amber-500' : ''}`}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{budget.category}</CardTitle>
+                      <CardDescription>Monthly budget</CardDescription>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -95,37 +122,65 @@ export function BudgetsView({ budgets, expenses, onAddBudgetAction, onUpdateBudg
                         }}>
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDeleteBudgetAction(budget.id)}>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteBudget(budget.id)}
+                          className="text-destructive"
+                        >
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <Progress value={percentage} className={isOverBudget ? 'bg-red-200' : ''} />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">
+                        <span className={isOverBudget ? 'text-destructive font-bold' : ''}>
+                          ₹{spent.toFixed(2)}
+                        </span>
+                        {' '}/{' '}
+                        <span>₹{budget.amount.toFixed(2)}</span>
+                      </span>
+                      <Badge 
+                        variant={isOverBudget ? 'destructive' : isCloseToLimit ? 'outline' : 'secondary'}
+                        className="font-medium"
+                      >
+                        {isOverBudget ? (
+                          <>
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Over by {((spent / budget.amount - 1) * 100).toFixed(0)}%
+                          </>
+                        ) : isCloseToLimit ? (
+                          <>
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            {percentage}%
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-3 w-3 mr-1" />
+                            {percentage}%
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    <Progress 
+                      value={percentage} 
+                      className={`h-2 ${isOverBudget ? 'bg-destructive/20' : isCloseToLimit ? 'bg-amber-500/20' : 'bg-primary/20'} ${isOverBudget ? 'text-destructive' : isCloseToLimit ? 'text-amber-500' : 'text-primary'}`}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+      
       <AddBudgetDialog
-        open={isAddBudgetDialogOpen || !!editingBudget}
-        onOpenChangeAction={(isOpen) => {
-          setIsAddBudgetDialogOpen(isOpen);
-          if (!isOpen) {
-            setEditingBudget(null); // Clear editing budget when dialog closes
-          }
-        }}
-        onSaveAction={(newBudget) => {
-          if (editingBudget) {
-            onUpdateBudgetAction({ ...editingBudget, ...newBudget });
-          } else {
-            onAddBudgetAction(newBudget);
-          }
-          setIsAddBudgetDialogOpen(false);
-          setEditingBudget(null);
-        }}
-        initialData={editingBudget} // Pass initial data for editing
+        open={isAddBudgetDialogOpen}
+        onOpenChangeAction={setIsAddBudgetDialogOpen}
+        onSaveAction={handleSaveBudget}
+        initialData={editingBudget}
       />
     </div>
   );

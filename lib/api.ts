@@ -183,6 +183,9 @@ export const authApi = {
       email: string;
       full_name: string;
     }>('/api/auth/me', token),
+
+  deleteAccount: (token: string) => 
+    apiDelete('/api/auth/delete', token),
 };
 
 // Wallets API
