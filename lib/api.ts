@@ -2,7 +2,7 @@ import { Wallet, WalletApiResponse } from '@/types/wallet';
 import { Budget } from '@/types/budget';
 import { Expense } from '@/types/expense';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export interface ApiResponse<T> {
   data?: T;
