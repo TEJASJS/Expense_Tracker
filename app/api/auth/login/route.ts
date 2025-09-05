@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-const API_URL = process.env.NEXT_PUBLIC_API_URL ;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 1: Get the access token from the backend
-    const tokenResponse = await fetch(`${API_URL}/token`, {
+    const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -31,7 +30,7 @@ export async function POST(req: NextRequest) {
     const { access_token } = await tokenResponse.json();
 
     // Step 2: Use the access token to get user details
-    const userResponse = await fetch(`${API_URL}/me`, {
+    const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/me`, {
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
